@@ -7,35 +7,26 @@ import org.jgroups.protocols.pbcast.*;
 import org.jgroups.stack.ProtocolStack;
 
 import java.net.InetAddress;
+import java.util.Map;
 
-public class DistrubtedNetworkChannel {
+public class DistributedNetworkChannel {
 
     private static final String MULTICAST_GROUP = "230.0.0.1";
     private final JChannel jChannel;
 
-    public DistrubtedNetworkChannel(String clusterName, DistributedMapReceiver receiver) {
-
+    public DistributedNetworkChannel(String channel, Map<String, String> map) {
         jChannel = new JChannel(false);
         setupProtocolStack(jChannel);
-
-        jChannel.setReceiver(receiver);
-
-        connectToCluster(clusterName);
-
+        setReceiver(map);
+        connectToCluster(channel);
     }
 
-    private void connectToCluster(String clusterName) {
-        try {
-            jChannel.connect(clusterName);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
+    /**
+     * @param stringMessage should be formed with convention "operation key value"
+     */
+    public void sendMessage(String stringMessage) {
 
-    public void sendMessage(KeyValuePair keyValuePair) {
-
-        Message msg = new Message(null, null, keyValuePair);
-
+        Message msg = new Message(null, null, stringMessage);
         try {
             jChannel.send(msg);
         } catch (Exception e) {
@@ -44,12 +35,28 @@ public class DistrubtedNetworkChannel {
 
     }
 
+    public void setReceiver(Map<String, String> map) {
+        jChannel.receiver(new DistributedMapReceiver(map, jChannel));
+    }
+
+    public JChannel getjChannel() {
+        return jChannel;
+    }
+
+    private void connectToCluster(String clusterName) {
+        try {
+            jChannel.connect(clusterName);
+            jChannel.getState(null, 0);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 
     private void setupProtocolStack(JChannel jChannel) {
+
         ProtocolStack protocolStack = new ProtocolStack();
-
         jChannel.setProtocolStack(protocolStack);
-
         try {
             protocolStack.addProtocol(new UDP().setValue("mcast_group_addr", InetAddress.getByName(MULTICAST_GROUP)))
                     .addProtocol(new PING())
@@ -69,7 +76,6 @@ public class DistrubtedNetworkChannel {
                     .addProtocol(new FRAG2())
                     .addProtocol(new STATE())
                     .addProtocol(new SEQUENCER())
-                    .addProtocol(new FLUSH())
                     .init();
         } catch (Exception e) {
             System.out.println("Error while initializing protocol stack");

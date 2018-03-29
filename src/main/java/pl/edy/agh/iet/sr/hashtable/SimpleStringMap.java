@@ -6,7 +6,9 @@ public interface SimpleStringMap {
 
     String get(String key);
 
-    String put(String key, String value);
+    String getState();
 
-    String remove(String key);
+    void put(String key, String value);
+
+    void remove(String key);
 }
